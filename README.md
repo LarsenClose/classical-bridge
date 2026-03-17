@@ -1,3 +1,6 @@
+[![Lean Action CI](https://github.com/LarsenClose/classical-bridge/actions/workflows/ci.yml/badge.svg)](https://github.com/LarsenClose/classical-bridge/actions/workflows/ci.yml)
+[![Documentation](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://larsenclose.github.io/classical-bridge/)
+
 # classical-bridge
 
 Constructs a concrete graded reflexive model from classical Turing machine computation and classifies its regime. Contains the headline results: `classicalGRM` (carrier = binary strings, selfApp = strip-and-reattach the Kleene self-application header, grade = string length), the counting engine (`construction_super_poly`, `drifted_lock`), P and NP as complexity classes over binary strings, and `not_P_eq_NP`. 22 Lean files, zero sorry.
