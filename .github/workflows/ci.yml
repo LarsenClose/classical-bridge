@@ -11,11 +11,4 @@ jobs:
 
     steps:
       - uses: actions/checkout@v5
-
-      - name: Clone dependency repos
-        run: |
-          git clone --depth 1 https://github.com/LarsenClose/witness-transport.git ../witness-transport
-          git clone --depth 1 https://github.com/LarsenClose/pnp-integrated.git ../pnp-integrated
-          git clone --depth 1 https://github.com/LarsenClose/classical-constraints.git ../classical-constraints
-
       - uses: leanprover/lean-action@v1
