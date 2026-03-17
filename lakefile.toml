@@ -1,0 +1,27 @@
+name = "classical-bridge"
+version = "0.1.0"
+keywords = ["math", "complexity", "bridge", "turing-machines"]
+defaultTargets = ["ClassicalBridge"]
+
+[leanOptions]
+autoImplicit = false
+
+[[require]]
+name = "mathlib"
+scope = "leanprover-community"
+rev = "v4.28.0"
+
+[[require]]
+name = "witness-transport"
+path = "../witness-transport"
+
+[[require]]
+name = "pnp-publication"
+path = "../pnp-integrated"
+
+[[require]]
+name = "classical-constraints"
+path = "../classical-constraints"
+
+[[lean_lib]]
+name = "ClassicalBridge"

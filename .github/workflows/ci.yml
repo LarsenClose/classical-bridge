@@ -1,0 +1,26 @@
+name: Lean Action CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/checkout@v5
+        with:
+          repository: LarsenClose/witness-transport
+          path: ../witness-transport
+      - uses: actions/checkout@v5
+        with:
+          repository: LarsenClose/pnp-integrated
+          path: ../pnp-integrated
+      - uses: actions/checkout@v5
+        with:
+          repository: LarsenClose/classical-constraints
+          path: ../classical-constraints
+      - uses: leanprover/lean-action@v1
