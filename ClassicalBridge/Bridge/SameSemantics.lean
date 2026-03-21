@@ -24,8 +24,7 @@ only in which self-application header they use (and the headers have the
 same length), then the encodings satisfy SameSemantics. The translation
 is a simple bijection that swaps one header prefix for the other.
 
-STATUS: 0 sorry. Axiom profile: inherits classical_tm_exists and
-classical_selfapp_header_exists from UniversalSimulation.lean.
+STATUS: 0 sorry. Zero custom axioms.
 -/
 
 import ClassicalBridge.Mirror.AdmissibleEncoding
@@ -99,9 +98,9 @@ noncomputable def sameSemantics_refl (E : AdmissibleEncoding) : SameSemantics E 
   translate_compat _ := rfl
 
 /-- The classicalAdmissibleEncoding is SameSemantics with itself. -/
-noncomputable def classical_sameSemantics_refl :
-    SameSemantics classicalAdmissibleEncoding classicalAdmissibleEncoding :=
-  sameSemantics_refl classicalAdmissibleEncoding
+noncomputable def classical_sameSemantics_refl (h : SelfAppHeader) :
+    SameSemantics (classicalAdmissibleEncoding h) (classicalAdmissibleEncoding h) :=
+  sameSemantics_refl (classicalAdmissibleEncoding h)
 
 -- ════════════════════════════════════════════════════════════
 -- Section 3: specAdmissibleEncoding — generalize classicalAdmissibleEncoding
@@ -124,13 +123,13 @@ noncomputable def specAdmissibleEncoding (spec : TMSelfAppSpec) : AdmissibleEnco
 
 /-- specAdmissibleEncoding of canonicalSpec equals classicalAdmissibleEncoding
     in all components. (They are definitionally equal by construction.) -/
-theorem specAdmissibleEncoding_canonical_fold (x : BinString) :
-    (specAdmissibleEncoding canonicalSpec).fold x =
-    classicalAdmissibleEncoding.fold x := rfl
+theorem specAdmissibleEncoding_canonical_fold (h : SelfAppHeader) (x : BinString) :
+    (specAdmissibleEncoding (canonicalSpec h)).fold x =
+    (classicalAdmissibleEncoding h).fold x := rfl
 
-theorem specAdmissibleEncoding_canonical_unfold (x : BinString) :
-    (specAdmissibleEncoding canonicalSpec).unfold x =
-    classicalAdmissibleEncoding.unfold x := rfl
+theorem specAdmissibleEncoding_canonical_unfold (h : SelfAppHeader) (x : BinString) :
+    (specAdmissibleEncoding (canonicalSpec h)).unfold x =
+    (classicalAdmissibleEncoding h).unfold x := rfl
 
 -- ════════════════════════════════════════════════════════════
 -- Section 4: swapPrefixN — bijective prefix swap
@@ -283,11 +282,11 @@ structure HeaderVariant where
 
 /-- The first AdmissibleEncoding from a HeaderVariant. -/
 noncomputable def HeaderVariant.enc₁ (hv : HeaderVariant) : AdmissibleEncoding :=
-  specAdmissibleEncoding ⟨classical_tm_exists, hv.h₁⟩
+  specAdmissibleEncoding ⟨classical_tm, hv.h₁⟩
 
 /-- The second AdmissibleEncoding from a HeaderVariant. -/
 noncomputable def HeaderVariant.enc₂ (hv : HeaderVariant) : AdmissibleEncoding :=
-  specAdmissibleEncoding ⟨classical_tm_exists, hv.h₂⟩
+  specAdmissibleEncoding ⟨classical_tm, hv.h₂⟩
 
 /-- The forward translation: swap h₁-prefix for h₂-prefix. -/
 def HeaderVariant.translate (hv : HeaderVariant) : BinString → BinString :=
@@ -414,15 +413,12 @@ noncomputable def sameSemantics_symm {E₁ E₂ : AdmissibleEncoding}
 /-
 AXIOM INVENTORY for this file:
 
-Custom axioms (inherited from UniversalSimulation.lean, used in
-specAdmissibleEncoding and HeaderVariant.enc₁/enc₂):
-1. classical_tm_exists : StepBoundedTM
-2. classical_selfapp_header_exists : SelfAppHeader
+Custom axioms: none. classical_tm is proved (ConcreteModel.lean);
+SelfAppHeader is a parameter.
 
-NO NEW AXIOMS are introduced in this file. All theorems about
-swapPrefixN (roundtrip, grade bound, drop invariance) and the
-SameSemantics constructions (sameSemantics_refl, headerVariant_sameSemantics,
-sameSemantics_symm) are PROVED, not axiomatized.
+All theorems about swapPrefixN (roundtrip, grade bound, drop
+invariance) and the SameSemantics constructions (sameSemantics_refl,
+headerVariant_sameSemantics, sameSemantics_symm) are PROVED.
 
 Standard Lean axioms: propext, Quot.sound (from list operations).
 

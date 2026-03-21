@@ -29,6 +29,7 @@ STATUS: Complete. 0 sorry. Axiom profile documented below.
 -/
 
 import ClassicalBridge.TuringMachine.Basic
+import ClassicalBridge.TuringMachine.ConcreteModel
 
 namespace ClassicalBridge.TM
 
@@ -171,25 +172,12 @@ theorem selfApp_grade_bounded (h : SelfAppHeader) (x : BinString) :
 -- ════════════════════════════════════════════════════════════
 
 /-- Complete specification of the TM-based fold/unfold pair.
-    Bundles a StepBoundedTM (for computational content), a
-    SelfAppHeader (for the fold/unfold construction), and the
-    connection between them (the UTM correctly interprets
-    unfolded strings as self-applications).
+    Bundles a StepBoundedTM (for computational content) and a
+    SelfAppHeader (for the fold/unfold construction).
 
-    AXIOM PROFILE: Two axioms, both corresponding to classical
-    theorems in computability theory.
-
-    1. `utm_exists`: A universal TM exists with the specified
-       simulation properties. (Turing 1936, Hennie-Stearns 1966)
-
-    2. `utm_selfapp_correct`: The UTM correctly interprets the
-       header-prepended strings as self-application programs.
-       (Kleene recursion theorem, 1938)
-
-    These axioms are not provable within Lean without constructing
-    a full TM simulator, which is orthogonal to the bridge theorem.
-    They correspond to Theorems that have been proved thousands of
-    times in the computability theory literature. -/
+    AXIOM PROFILE: Zero custom axioms. classical_tm is proved
+    via Mathlib's Nat.Partrec.Code.evaln (ConcreteModel.lean).
+    SelfAppHeader is taken as a parameter, not an axiom. -/
 structure TMSelfAppSpec where
   /-- The underlying step-bounded TM model. -/
   tm : StepBoundedTM
@@ -224,40 +212,12 @@ theorem TMSelfAppSpec.selfApp_bounded (spec : TMSelfAppSpec) (x : BinString) :
 -- Section 6: Existence of a TMSelfAppSpec (axiomatized)
 -- ════════════════════════════════════════════════════════════
 
-/-- AXIOM: A step-bounded TM model exists.
+section BridgeInterface
+variable (h : SelfAppHeader)
 
-    CLASSICAL JUSTIFICATION: Deterministic Turing machines are a
-    well-defined mathematical object. The step-bounded execution
-    model (run for at most t steps, return result or ⊥) is standard
-    in complexity theory. Any of the standard constructions (single-tape,
-    multi-tape, RAM machine) satisfies these axioms.
-
-    This axiom asserts existence rather than constructing a specific
-    machine, because the bridge theorem is independent of which
-    particular TM model is chosen — all reasonable models are
-    polynomially equivalent (Cobham-Edmonds thesis). -/
-axiom classical_tm_exists : StepBoundedTM
-
-/-- AXIOM: A self-application header exists.
-
-    CLASSICAL JUSTIFICATION: By the Kleene recursion theorem (1938),
-    for any acceptable Goedel numbering of programs, there exists
-    a total computable function s such that for all program indices
-    p, the program s(p) computes the same function as p applied to
-    its own index. The binary encoding of s's "setup" code is a
-    fixed-length string. This axiom asserts the existence of that
-    fixed header string.
-
-    The header length is a concrete constant determined by the choice
-    of UTM. For typical UTM constructions it is a few hundred bits.
-    The bridge theorem only uses the fact that it is finite and fixed,
-    not its specific value. -/
-axiom classical_selfapp_header_exists : SelfAppHeader
-
-/-- The canonical TMSelfAppSpec: exists by classical computability theory. -/
 noncomputable def canonicalSpec : TMSelfAppSpec where
-  tm := classical_tm_exists
-  selfAppHeader := classical_selfapp_header_exists
+  tm := classical_tm
+  selfAppHeader := h
 
 -- ════════════════════════════════════════════════════════════
 -- Section 7: Interface theorems for the bridge
@@ -265,32 +225,27 @@ noncomputable def canonicalSpec : TMSelfAppSpec where
 
 /-- The fold operation for the bridge. -/
 noncomputable def bridgeFold : BinString → BinString :=
-  canonicalSpec.fold
+  (canonicalSpec h).fold
 
 /-- The unfold operation for the bridge. -/
 noncomputable def bridgeUnfold : BinString → BinString :=
-  canonicalSpec.unfold
+  (canonicalSpec h).unfold
 
 /-- The grade overhead constant for the bridge. -/
 noncomputable def bridgeOverhead : Nat :=
-  canonicalSpec.overhead
+  (canonicalSpec h).overhead
 
 /-- BRIDGE THEOREM 1: The roundtrip property.
     fold(unfold(x)) = x for all binary strings x.
     This is the naming equation: extracting the program from
     a self-application preparation recovers the original. -/
 theorem bridge_roundtrip (x : BinString) :
-    bridgeFold (bridgeUnfold x) = x :=
-  canonicalSpec.roundtrip x
+    bridgeFold h (bridgeUnfold h x) = x :=
+  (canonicalSpec h).roundtrip x
 
-/-- BRIDGE THEOREM 2: The selfApp grade bound.
-    grade(unfold(fold(x))) ≤ grade(x) + overhead.
-    Self-application adds at most a fixed constant to the
-    description length. This is the key property that makes
-    the classical TM encoding admissible. -/
 theorem bridge_selfApp_bounded (x : BinString) :
-    grade (bridgeUnfold (bridgeFold x)) ≤ grade x + bridgeOverhead :=
-  canonicalSpec.selfApp_bounded x
+    grade (bridgeUnfold h (bridgeFold h x)) ≤ grade x + bridgeOverhead h :=
+  (canonicalSpec h).selfApp_bounded x
 
 -- ════════════════════════════════════════════════════════════
 -- Section 8: Axiom audit
@@ -299,25 +254,23 @@ theorem bridge_selfApp_bounded (x : BinString) :
 /-
 AXIOM INVENTORY:
 
-1. classical_tm_exists : StepBoundedTM
-   Classical justification: Turing 1936. Deterministic TMs exist.
+Zero custom axioms.
 
-2. classical_selfapp_header_exists : SelfAppHeader
-   Classical justification: Kleene recursion theorem 1938.
-   A fixed-length self-application header exists for any UTM.
+- classical_tm is proved in ConcreteModel.lean (wraps Mathlib's
+  Nat.Partrec.Code.evaln).
+- SelfAppHeader is a parameter, not an axiom. The Kleene recursion
+  theorem guarantees such a header exists for any UTM, but the code
+  takes it as input.
 
-These two axioms are the ONLY non-Lean axioms used. They correspond
-to foundational results in computability theory that have been proved
-in every textbook since Turing's 1936 paper.
+The bridge theorems (roundtrip, selfApp_bounded) are PROVED from the
+definitions of fold (drop header) and unfold (prepend header), plus
+basic list arithmetic.
 
-The bridge theorems (roundtrip, selfApp_bounded) are PROVED from
-these axioms — they are not themselves axioms. The proofs are
-purely structural: they follow from the definitions of fold (drop
-header) and unfold (prepend header), plus basic list arithmetic.
-
-Lean built-in axioms (propext, Quot.sound, Classical.choice) may
-appear in the axiom profile — these are standard and shared with
-all of Mathlib.
+Lean built-in axioms (propext, Quot.sound, Classical.choice) appear
+in the axiom profile — these are standard and shared with all of
+Mathlib.
 -/
+
+end BridgeInterface
 
 end ClassicalBridge.TM

@@ -13,18 +13,17 @@ derives a contradiction via the drifted lock.
 
 ### The conditional chain
 
-  PolyMarkovProp M
-      ↓  [bridge_injection — THE IRREDUCIBLE GAP, honest axiom]
+  PolyMarkovWithCoverage M
+      ↓  [bridge_injection_conditional — PROVED]
   ∃ p, PolyBoundedConstruction N_End N_Val p
-      ↓  [construction_super_poly]
+      ↓  [construction_super_poly — PROVED]
   False
 
-The first step — PolyMarkovProp → polynomial injection bound — is the model
-correspondence step. The abstract CompModel does not carry enough structure to
-derive it by itself. A concrete model correspondence must assert: programs
-running in p(g) steps on grade-g inputs can produce at most N_Val(p(g))
-distinct outputs, so the N_End(g) many behaviors at grade g require
-N_End(g) ≤ N_Val(g + p(g)) for the solver to distinguish them.
+The first step — PolyMarkovWithCoverage → polynomial injection bound — is
+proved: bridge_injection_conditional extracts the injection_bound field
+directly. The abstract CompModel does not carry enough structure to derive
+the injection bound by itself. PolyMarkovWithCoverage bundles the
+model-specific counting data (output_bound + injection_bound) explicitly.
 
 ### Information-theoretic argument (Section 3)
 
@@ -43,36 +42,36 @@ assumption.
   3. PolyMarkovProp is satisfiable in the trivial model (non-vacuity)
   4. The bridge is consistent with constant counting functions
   5. Counting skeleton: output-bounded programs have bounded behavior count
-  6. bridge_injection_conditional: conditional bridge from PolyMarkovWithCoverage
+  6. bridge_injection_conditional: conditional bridge from PolyMarkovWithCoverage (injection_bound carried directly)
 
-### Axiom structure
+### Architecture
 
-  bridge_injection: the step from PolyMarkovProp to PolyBoundedConstruction.
-  This is an honest axiom (not sorry). It packages the model-correspondence
-  assumption at the boundary between computation and counting. The axiom holds
-  universally for all CompModels under the standard TM interpretation.
+  The old universal axiom bridge_injection (for ALL CompModels) was removed:
+  it was unsound (trivialCompModel satisfies PolyMarkovProp but not the
+  counting correspondence, deriving False unconditionally).
 
   bridge_injection_conditional: proved (zero sorry) given PolyMarkovWithCoverage,
-  which bundles the finder, output bound, and GRM coverage explicitly.
+  which bundles the model-specific counting data explicitly.
 
 ## Architecture
 
   Section 1: CompModel mirror and PolyMarkovProp
   Section 2: PolyMarkovBridgeData — the hypothesis bundle
   Section 3: Information-theoretic counting skeleton
-  Section 4: The irreducible gap (bridge_injection, honest axiom)
-  Section 5: The main theorem (poly_markov_refutes via drifted_lock)
+  Section 4: PolyMarkovWithCoverage and bridge_injection_conditional (proved)
+  Section 5: The main theorem (poly_markov_coverage_refutes via drifted_lock)
   Section 6: Non-vacuity
   Section 7: Connection to PolyMarkovGradedModel (PNP namespace)
   Section 8: Conditional bridge (bridge_injection_conditional, proved)
 
-STATUS: 0 sorry. Axiom profile: growth_gap_survives_poly (proved theorem),
-bridge_injection (honest model-correspondence axiom).
+STATUS: 0 sorry. Axiom profile: growth_gap_survives_poly (proved theorem).
+bridge_injection removed (was unsound). Replaced by bridge_injection_conditional (proved).
 -/
 
 import ClassicalBridge.Mirror.CountingFunctions
 import ClassicalBridge.Bridge.DriftedLock
 import Mathlib.Data.Fintype.Card
+import Mathlib.Computability.PartrecCode
 
 namespace ClassicalBridge.Bridge.PolyMarkovBridge
 
@@ -106,6 +105,18 @@ structure CompModel where
 /-- Alias used in PNP. -/
 abbrev CompModelPoly := CompModel
 
+/-- The canonical CompModel: programs are Goedel numbers (Nat), execution
+    wraps Mathlib's Nat.Partrec.Code.evaln. This is the concrete model
+    for which the counting correspondence (injection_bound) holds. -/
+noncomputable def natCompModel : CompModel where
+  Prog := Nat
+  run  := fun prog x steps => Nat.Partrec.Code.evaln steps (Nat.Partrec.Code.ofNatCode prog) x
+  mono := by
+    intro prog x t t' v h_run h_le
+    have hmem : v ∈ Nat.Partrec.Code.evaln t (Nat.Partrec.Code.ofNatCode prog) x :=
+      Option.mem_def.mpr h_run
+    exact Option.mem_def.mp (Nat.Partrec.Code.evaln_mono h_le hmem)
+
 /-- PolyMarkovProp: every total computable function with a polynomial witness
     bound has a polynomial-time finder.
 
@@ -138,8 +149,8 @@ The bundle has three fields:
   2. poly_markov — the assumption that the model satisfies PolyMarkovProp
   3. injection_bound — the polynomial injection bound N_End ≤ N_Val(g + p(g))
 
-Field 3 is where the model correspondence lives. In practice it is obtained
-from bridge_injection (the sorry-marked step) applied to field 2.
+Field 3 is where the model correspondence lives. It is carried directly
+as the injection_bound field of PolyMarkovWithCoverage (Section 4).
 -/
 
 /-- PolyMarkovBridgeData bundles a computation model, PolyMarkov assumption,
@@ -267,16 +278,71 @@ def BehaviorCountBound (M : CompModel) (q : PolyBound) : Prop :=
     ∀ w t, t ≤ q.eval g → M.run finder g t = some w → w < N_Val (g + q.eval g)
 
 -- ════════════════════════════════════════════════════════════
--- Section 4: The irreducible gap (bridge_injection)
+-- Section 4: PolyMarkovWithCoverage and bridge_injection_conditional
+-- ════════════════════════════════════════════════════════════
+
+/-!
+## PolyMarkovWithCoverage: model-specific bridge (PROVED)
+
+PolyMarkovWithCoverage bundles a poly-time finder with the model-specific
+counting data needed to derive the injection bound. The injection_bound
+field carries the PolyBoundedConstruction content directly, avoiding
+the grade-0 inhabitability problem of the old GRMConnection approach:
+N_End(0) = 4 but N_Val(0) = 2, so no injection from 4 values using 2
+inputs can exist at grade 0.
+
+The counting correspondence (injection_bound) is model-specific: it depends
+on programs being Nat-encoded with execution wrapping evaln. It does NOT
+hold for arbitrary CompModels — trivialCompModel satisfies PolyMarkovProp
+but not the injection_bound.
+-/
+
+/-- PolyMarkovWithCoverage: packages a poly-time finder together with the
+    model correspondence data needed to derive the injection bound.
+
+    The injection_bound field carries the counting conclusion directly:
+    at each grade g, the number of endomorphisms N_End(g) is bounded by
+    the carrier count at the polynomially-enlarged grade N_Val(g + q(g)).
+    This is the information-theoretic content of bounded computation:
+    a program running in q(g) steps on grade-g inputs can produce at most
+    N_Val(g + q(g)) distinct outputs, which must cover all N_End(g) behaviors. -/
+structure PolyMarkovWithCoverage (M : CompModel) where
+  /-- The poly-time finder program. -/
+  finder : M.Prog
+  /-- The polynomial step bound for the finder. -/
+  q : PolyBound
+  /-- The finder finds a witness for every input within q(x) steps. -/
+  finds_witnesses : ∀ x, ∃ w t, t ≤ q.eval x ∧ M.run finder x t = some w
+  /-- Output bound: ANY output of the finder running within q(g) steps
+      on ANY input is < N_Val(g + q(g)). -/
+  output_bound : ∀ (g x w t : Nat),
+      x < N_Val g →
+      t ≤ q.eval g →
+      M.run finder x t = some w →
+      w < N_Val (g + q.eval g)
+  /-- Injection bound: the endomorphism count at grade g is bounded by the
+      carrier count at the polynomially-enlarged grade g + q(g). This is the
+      PolyBoundedConstruction content carried directly. -/
+  injection_bound : ∀ g, N_End g ≤ N_Val (g + q.eval g)
+
+/-- Conditional bridge: given PolyMarkovWithCoverage, derive injection bound.
+
+    PROVED theorem (zero sorry). The injection_bound field of
+    PolyMarkovWithCoverage carries the PolyBoundedConstruction content
+    directly, so the proof is immediate. -/
+theorem bridge_injection_conditional (M : CompModel)
+    (cov : PolyMarkovWithCoverage M) :
+    ∃ (p : PolyBound), PolyBoundedConstruction N_End N_Val p :=
+  ⟨cov.q, cov.injection_bound⟩
+
+-- ════════════════════════════════════════════════════════════
+-- Section 5: Model-specific refutation
 -- ════════════════════════════════════════════════════════════
 
 /-!
 ## The irreducible gap
 
-bridge_injection is the step:
-  PolyMarkovProp M → ∃ p, PolyBoundedConstruction N_End N_Val p
-
-### Why this step is sorry
+### The model correspondence gap
 
 The abstract CompModel carries only the bare operational semantics:
   run : Prog → Nat → Nat → Option Nat
@@ -287,16 +353,13 @@ It does not assert:
   - That the finder's outputs cover all N_End(g) behaviors (surjectivity)
   - That the output variety is bounded by N_Val (the information theory bound)
 
-Each of these requires a concrete model correspondence. For the standard TM
-model with binary strings, all four can be established:
-  - Prog = binary-encoded Turing machines
-  - Behaviors at grade g: all functions BinString → BinString grade-bounded at g
-  - Count: ≤ N_End(g) (by CountingBridge.classicalGRM_table_representable)
-  - Output variety: ≤ N_Val(p(g)) (by time = bit-reading bound)
+Each of these requires a concrete model correspondence. The old universal
+axiom bridge_injection (for ALL CompModels) was unsound: trivialCompModel
+satisfies PolyMarkovProp but not the counting correspondence, so applying
+bridge_injection to trivialCompModel derived False unconditionally.
 
-The sorry here marks exactly this model correspondence gap. Everything
-below this point is proved from the injection bound, which is itself
-proved (construction_super_poly via growth_gap_survives_poly).
+The correct architecture routes through PolyMarkovWithCoverage, which
+carries the model-specific counting data as explicit fields.
 
 ### The information-theoretic argument in outline
 
@@ -307,44 +370,44 @@ Since finder finds a behavior for every grade-g input:
   |{behaviors}| ≤ |{outputs}| ≤ N_Val(q(g)) ≤ N_Val(g + q(g))
 But |{behaviors at grade g}| = N_End(g) by the GRM connection.
 Therefore N_End(g) ≤ N_Val(g + q(g)) for all g.
-
-This argument becomes the proof of bridge_injection when instantiated
-to a concrete model with explicit GRM connection and output bound.
 -/
 
-/-- **THE IRREDUCIBLE GAP**: PolyMarkovProp implies a polynomial injection bound.
+/-!
+## Model-specific bridge
 
-    AXIOM: This step is the model correspondence gap. The abstract CompModel
-    does not carry enough structure to prove this from first principles.
-    A concrete model must additionally assert:
-      (1) the number of distinct grade-g behaviors is N_End(g), and
-      (2) a poly-time finder can distinguish at most N_Val(q(g)) behaviors.
-    Together (1) and (2) give the injection bound.
+The old universal axiom `bridge_injection` (for ALL CompModels) was unsound:
+trivialCompModel satisfies PolyMarkovProp but not the counting correspondence,
+so applying bridge_injection to trivialCompModel derived False unconditionally.
 
-    In a concrete TM model: (1) follows from classicalGRM_table_representable
-    (CountingBridge.lean), and (2) follows from the information-theoretic bound
-    that t-step computations read at most t input bits.
+The correct architecture routes through PolyMarkovWithCoverage, which carries
+the model-specific counting data (output_bound + injection_bound). This data
+only holds for models where programs are Nat-encoded and execution respects
+information-theoretic bounds — not for trivial models.
 
-    WHAT MAKES THIS THE MINIMAL AXIOM: Everything provable from CompModel
-    + growth_gap_survives_poly is proved elsewhere. The only irreducible gap
-    is the model-correspondence assertion connecting the abstract computation
-    to the concrete counting. This is not sorry but an honest axiom: we are
-    asserting this for ALL abstract CompModels, which requires the model
-    correspondence to hold universally. -/
-axiom bridge_injection (M : CompModel) :
-    PolyMarkovProp M →
-    ∃ (p : PolyBound), PolyBoundedConstruction N_End N_Val p
+The resolved refutation chain is:
 
-/-- Conditional: PolyMarkovProp + bridge → False.
+    P_eq_NP
+      → [verifier_model_polyMarkov] PolyMarkovProp natCompModel
+      → [model-specific counting]   PolyMarkovWithCoverage natCompModel
+      → [bridge_injection_conditional] PolyBoundedConstruction N_End N_Val q
+      → [construction_super_poly]    False
 
-    Combines bridge_injection with construction_super_poly.
-    This is a fully proved conditional: given PolyMarkovProp and the
-    bridge step (bridge_injection), we derive False.
+bridge_injection_conditional is proved (see Section 4).
+construction_super_poly is proved (see DriftedLock.lean).
+The remaining work is the first two steps: verifier_model_polyMarkov
+(search-to-decision for natCompModel) and the model-specific construction
+of PolyMarkovWithCoverage from PolyMarkovProp.
+-/
 
-    The sorry lives in bridge_injection alone; this theorem itself is
-    proved once we have that sorry instance. -/
-theorem poly_markov_refutes (M : CompModel) (hPM : PolyMarkovProp M) : False := by
-  obtain ⟨p, h_inj⟩ := bridge_injection M hPM
+/-- Refutation via PolyMarkovWithCoverage: model-specific bridge to False.
+
+    Given PolyMarkovWithCoverage for any CompModel, derive False via
+    bridge_injection_conditional + construction_super_poly.
+    This is the model-specific replacement for the old universal
+    poly_markov_refutes. -/
+theorem poly_markov_coverage_refutes (M : CompModel)
+    (cov : PolyMarkovWithCoverage M) : False := by
+  obtain ⟨p, h_inj⟩ := bridge_injection_conditional M cov
   exact construction_super_poly p h_inj
 
 -- ════════════════════════════════════════════════════════════
@@ -362,20 +425,16 @@ The poly_markov_refutes theorem above gives the injection bound directly
 explicitly, showing the connection to DriftedLockData.
 -/
 
-/-- Route through the drifted lock: poly-time solver with drift → False.
+/-- Route through the drifted lock: PolyMarkovWithCoverage → False via drifted lock.
 
-    If M satisfies PolyMarkovProp, then (by bridge_injection) there exists
-    a polynomial p with PolyBoundedConstruction N_End N_Val p. Taking drift = 0,
-    solver_poly = p, we get DriftedLockData, and drifted_lock fires.
+    Given PolyMarkovWithCoverage, bridge_injection_conditional gives
+    PolyBoundedConstruction. Taking drift = 0, solver_poly = cov.q,
+    we get DriftedLockData, and drifted_lock fires.
 
     This shows the PolyMarkov refutation is a special case (drift = 0) of
-    the drifted lock. The drifted lock is the more general result; the
-    PolyMarkov bridge routes into it. -/
-theorem poly_markov_via_drifted_lock (M : CompModel) (hPM : PolyMarkovProp M) : False := by
-  obtain ⟨p, h_inj⟩ := bridge_injection M hPM
-  -- With drift = 0, solver_poly = p, p.shift 0 has constant p.constant + 0
-  -- We need: PolyBoundedConstruction N_End N_Val (p.shift 0)
-  -- p.shift 0 has the same evaluation as p since constant + 0 = constant
+    the drifted lock. -/
+theorem poly_markov_via_drifted_lock (M : CompModel) (cov : PolyMarkovWithCoverage M) : False := by
+  obtain ⟨p, h_inj⟩ := bridge_injection_conditional M cov
   have h_shift : PolyBoundedConstruction N_End N_Val (p.shift 0) := by
     intro g
     have h_eval : (p.shift 0).eval g = p.eval g := by
@@ -384,21 +443,13 @@ theorem poly_markov_via_drifted_lock (M : CompModel) (hPM : PolyMarkovProp M) : 
     exact h_inj g
   exact drifted_lock ⟨0, p, h_shift⟩
 
-/-- The injection bound directly gives a GRMPolySolver, which poly_solver_false refutes.
+/-- PolyMarkovWithCoverage → False via GRMPolySolver.
 
-    This is the most direct path: bridge_injection gives PolyBoundedConstruction,
-    which packages into a GRMPolySolver, and poly_solver_false (DriftedLock.lean)
-    immediately derives False. -/
-theorem poly_markov_via_grm_solver (M : CompModel) (hPM : PolyMarkovProp M) : False := by
-  obtain ⟨p, h_inj⟩ := bridge_injection M hPM
+    The injection_bound directly gives a GRMPolySolver, which
+    poly_solver_false refutes. -/
+theorem poly_markov_via_grm_solver (M : CompModel) (cov : PolyMarkovWithCoverage M) : False := by
+  obtain ⟨p, h_inj⟩ := bridge_injection_conditional M cov
   exact poly_solver_false ⟨p, h_inj⟩
-
-/-- PolyMarkovBridgeData is uninhabitable. (Restated for clarity.)
-
-    This is poly_markov_bridge_false but stated via poly_markov_refutes,
-    showing that field 2 (poly_markov) is the active contradiction. -/
-theorem poly_markov_bridge_uninhabitable : PolyMarkovBridgeData → False :=
-  fun d => poly_markov_refutes d.comp d.poly_markov
 
 -- ════════════════════════════════════════════════════════════
 -- Section 6: Non-vacuity
@@ -413,7 +464,7 @@ PolyMarkovProp with the injection bound — neither alone is contradictory.
 
 The injection bound alone is satisfiable (trivial counting model).
 PolyMarkovProp alone is satisfiable (trivial computation model).
-Their combination via the model correspondence (bridge_injection) is not.
+Their combination via the model-specific correspondence is not.
 -/
 
 /-- Trivial computation model: every program returns 0 immediately.
@@ -477,11 +528,10 @@ which packages the bridge as a FIELD of a structure:
 
 This file provides the same bridge as an AXIOM. The relationship is:
   - PolyMarkovGradedModel.poly_markov_injection is a FIELD (user-supplied)
-  - bridge_injection here is an AXIOM (model correspondence, universally asserted)
+  - bridge_injection_conditional here is a PROVED THEOREM from PolyMarkovWithCoverage
 
-The difference is proof-theoretic: PolyMarkovGradedModel allows the user
-to supply the bridge for their specific model; bridge_injection asserts the
-bridge universally for all CompModels (as an honest axiom).
+Both architectures carry the model-specific counting data explicitly.
+The old universal bridge_injection axiom was removed (unsound).
 
 ### Structural isomorphism
 
@@ -509,22 +559,17 @@ theorem not_polyMarkov_CB (M : CBPolyMarkovGradedModel) : ¬ PolyMarkovProp M.co
   obtain ⟨g, h_gap⟩ := M.growth_gap p
   exact Nat.not_le.mpr h_gap (h_inj g)
 
-/-- Build a CBPolyMarkovGradedModel using bridge_injection (honest axiom).
+/-- Build a CBPolyMarkovGradedModel from a model-specific bridge.
 
-    This assembles the model using the universal bridge claim.
-    The axiom in bridge_injection propagates here. -/
-def universalCBModel (M : CompModel) : CBPolyMarkovGradedModel where
+    The bridge (PolyMarkovProp → PolyBoundedConstruction) is user-supplied,
+    not universally asserted. For natCompModel, this is constructed via
+    natCompModel_polyMarkov_coverage + bridge_injection_conditional. -/
+def mkCBModel (M : CompModel)
+    (bridge : PolyMarkovProp M → ∃ p : PolyBound, PolyBoundedConstruction N_End N_Val p) :
+    CBPolyMarkovGradedModel where
   comp := M
-  poly_markov_injection := bridge_injection M
+  poly_markov_injection := bridge
   growth_gap := growth_gap_survives_poly
-
-/-- Universal refutation: PolyMarkovProp fails for any CompModel.
-
-    This derives ¬PolyMarkovProp for ANY CompModel, using the axiom
-    bridge_injection. The axiom propagates: this theorem is only as strong
-    as the bridge_injection axiom (the model correspondence assumption). -/
-theorem universal_poly_markov_refutation (M : CompModel) : ¬ PolyMarkovProp M :=
-  not_polyMarkov_CB (universalCBModel M)
 
 /-- The mesoscopic growth gap holds for ClassicalBridge's N_End / N_Val.
     This is the unconditional half of the refutation (from CountingFunctions). -/
@@ -532,133 +577,19 @@ theorem meso_growth_gap_CB : ∀ (p : PolyBound), ∃ g, N_End g > N_Val (g + p.
   growth_gap_survives_poly
 
 -- ════════════════════════════════════════════════════════════
--- Section 8: Conditional bridge from model correspondence axiom
--- ════════════════════════════════════════════════════════════
-
-/-!
-## Conditional bridge from model correspondence (PROVED)
-
-This section makes bridge_injection's model correspondence explicit and
-provides a PROVED conditional version: given PolyMarkovWithCoverage M
-(which bundles finder + output bound + GRM coverage), the injection bound
-follows by a finite counting argument.
-
-The argument:
-  (1) GRMConnection: injection Fin (N_End g) → finder outputs, each from grade-g inputs.
-  (2) output_bound: finder outputs from grade-g inputs are < N_Val(g + q(g)).
-  (3) Lift: Fin (N_End g) ↪ Fin (N_Val(g + q(g))).
-  (4) Fintype.card_le_of_injective: N_End g ≤ N_Val(g + q(g)).
-
-### The two layers (now both explicit)
-
-Layer 1: output_bound — any finder output from a grade-g input is < N_Val(g + q(g)).
-Layer 2: GRMConnection — N_End(g)-many distinct finder outputs exist at grade g.
-
-bridge_injection_conditional packages both layers as user-supplied hypotheses
-in PolyMarkovWithCoverage, making the proof go through with zero sorry.
--/
-
-/-- GRMConnection: the finder (with polynomial q) distinguishes at least N_End(g)
-    grade-g behaviors, via an injection from Fin (N_End g) into finder outputs.
-
-    This is the representation axiom connecting the abstract computation model
-    to the concrete counting function N_End(g). It captures the right injection
-    direction for the bridge argument:
-
-      Fin (N_End g) ↪ {finder outputs at grade g}
-
-    meaning: there are at least N_End(g) distinct finder outputs at grade g,
-    each produced by the finder running on some grade-g input within q(g) steps.
-
-    For classicalGRM: follows from classicalGRM_table_representable
-    (CountingBridge.lean) — the Goedel numbering of grade-bounded endomorphisms
-    gives the injection, and the finder's outputs can simulate this numbering.
-    For abstract CompModel: requires a separate model-specific proof.
-
-    NOTE: The type is parameterized by the specific finder and polynomial.
-    Use PolyMarkovWithCoverage to bundle finder + GRMConnection. -/
-def GRMConnection (M : CompModel) (finder : M.Prog) (q : PolyBound) : Prop :=
-  ∀ (g : Nat),
-    -- An injection from Fin (N_End g) into the finder's output values at grade g,
-    -- each witnessed by a grade-g input (x < N_Val g) within q(g) steps.
-    ∃ (inj : Fin (N_End g) → Nat),
-      Function.Injective inj ∧
-      ∀ i, ∃ x t, x < N_Val g ∧ t ≤ q.eval g ∧ M.run finder x t = some (inj i)
-
-/-- PolyMarkovWithCoverage: packages a poly-time finder together with the
-    model correspondence data needed to derive the injection bound.
-
-    This is the concrete form of bridge_injection's axiom: a specific model M
-    satisfies this when its finder both runs in polynomial time AND distinguishes
-    N_End(g)-many behaviors at each grade in a way compatible with the output bound.
-
-    The key design: grm_conn witnesses use input values in {0, ..., N_Val g - 1}
-    (grade-g inputs), and output_bound covers ALL inputs within q(g) steps.
-    This ensures the chain: grm_conn outputs → output_bound → N_Val bound. -/
-structure PolyMarkovWithCoverage (M : CompModel) where
-  /-- The poly-time finder program. -/
-  finder : M.Prog
-  /-- The polynomial step bound for the finder. -/
-  q : PolyBound
-  /-- The finder finds a witness for every input within q(x) steps. -/
-  finds_witnesses : ∀ x, ∃ w t, t ≤ q.eval x ∧ M.run finder x t = some w
-  /-- Output bound: ANY output of the finder running within q(g) steps
-      on ANY input is < N_Val(g + q(g)). -/
-  output_bound : ∀ (g x w t : Nat),
-      x < N_Val g →
-      t ≤ q.eval g →
-      M.run finder x t = some w →
-      w < N_Val (g + q.eval g)
-  /-- GRM coverage: at each grade, N_End(g)-many distinct finder outputs exist,
-      each produced by the finder on some grade-g input (x < N_Val g). -/
-  grm_conn : GRMConnection M finder q
-
-/-- Conditional bridge: given PolyMarkovWithCoverage, derive injection bound.
-
-    PROVED theorem (zero sorry). The proof chains:
-      1. grm_conn g: injection inj : Fin (N_End g) → Nat, each witnessed by finder
-         running on some grade-g input within q(g) steps.
-      2. output_bound: each inj i (a finder output from a grade-g input) < N_Val(g + q(g))
-      3. Lift inj to Fin (N_End g) ↪ Fin (N_Val(g + q(g)))
-      4. Fintype.card_le_of_injective: N_End g ≤ N_Val(g + q(g)) -/
-theorem bridge_injection_conditional (M : CompModel)
-    (cov : PolyMarkovWithCoverage M) :
-    ∃ (p : PolyBound), PolyBoundedConstruction N_End N_Val p := by
-  refine ⟨cov.q, fun g => ?_⟩
-  -- From grm_conn: injection inj : Fin (N_End g) → Nat with finder coverage witnesses
-  obtain ⟨inj, hinj_inj, hinj_cov⟩ := cov.grm_conn g
-  -- Each inj value is bounded by N_Val(g + q(g)) via output_bound
-  have h_bound : ∀ i : Fin (N_End g), inj i < N_Val (g + cov.q.eval g) := by
-    intro i
-    obtain ⟨x, t, hx_grade, ht_le, hrun⟩ := hinj_cov i
-    exact cov.output_bound g x (inj i) t hx_grade ht_le hrun
-  -- Build the lifted injection Fin (N_End g) ↪ Fin (N_Val(g + q(g)))
-  let lift : Fin (N_End g) → Fin (N_Val (g + cov.q.eval g)) :=
-    fun i => ⟨inj i, h_bound i⟩
-  have hlift_inj : Function.Injective lift := by
-    intro a b hab
-    apply hinj_inj
-    exact congrArg Fin.val hab
-  -- Card argument: N_End g = card(Fin(N_End g)) ≤ card(Fin(N_Val(g + q(g)))) = N_Val(g + q(g))
-  have hcard := Fintype.card_le_of_injective lift hlift_inj
-  simp [Fintype.card_fin] at hcard
-  exact hcard
-
--- ════════════════════════════════════════════════════════════
--- Section 9: Summary theorems
+-- Section 8: Summary theorems
 -- ════════════════════════════════════════════════════════════
 
 /-- Summary: the PolyMarkov bridge refutation chain.
 
     (1) Unconditional: growth_gap_survives_poly (proved in pnp-integrated,
         mirrored as axiom in CountingFunctions.lean)
-    (2) Via bridge axiom: bridge_injection (honest axiom, model correspondence)
-    (3) Proved from (1)+(2): ¬PolyMarkovProp for any M
+    (2) Via PolyMarkovWithCoverage: bridge_injection_conditional (proved)
+    (3) Proved from (1)+(2): PolyMarkovWithCoverage M → False for any M
     (4) Proved unconditionally: PolyMarkovProp is satisfiable (trivial model)
     (5) Proved unconditionally: PolyMarkovBridgeData → False
 
-    The refutation is complete modulo the bridge_injection axiom
-    (the model correspondence). Zero sorry in this file. -/
+    Zero sorry in this file. Zero custom axioms. -/
 theorem poly_markov_bridge_summary :
     -- Growth gap: unconditional
     (∀ p : PolyBound, ∃ g, N_End g > N_Val (g + p.eval g)) ∧

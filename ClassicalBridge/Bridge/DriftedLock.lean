@@ -42,9 +42,9 @@ at the counting level (N_End vs N_Val) and applies regardless of the SelfAppUnbo
 regime. Its non-vacuity (Section 8) shows the individual hypotheses can each be satisfied
 in a trivial model.
 
-STATUS: 0 sorry. Axiom profile: growth_gap_survives_poly (proved theorem, ported
-from pnp-integrated), classical_tm_exists and classical_selfapp_header_exists
-(inherited transitively from ChainConnection if that section is used).
+STATUS: 0 sorry. Zero custom axioms. growth_gap_survives_poly is a proved
+theorem (ported from pnp-integrated). SelfAppHeader is a parameter;
+classical_tm is proved in ConcreteModel.lean.
 -/
 
 import ClassicalBridge.Mirror.CountingFunctions
@@ -344,9 +344,9 @@ statement that the growth gap makes impossible.
 /-- classicalGRM satisfies the drift condition at bridgeOverhead.
     This is the first component that would be needed to build a DriftedLockData
     for classicalGRM — but the combined_injection component cannot be added. -/
-theorem classicalGRM_satisfies_drift_hypothesis :
-    HasFiniteDrift classicalAdmissibleEncoding bridgeOverhead :=
-  classicalGRM_hasFiniteDrift
+theorem classicalGRM_satisfies_drift_hypothesis (h : SelfAppHeader) :
+    HasFiniteDrift (classicalAdmissibleEncoding h) (bridgeOverhead h) :=
+  classicalGRM_hasFiniteDrift h
 
 /-- There is no GRMPolySolver for N_End and N_Val.
     This is a direct corollary of construction_super_poly applied to any
@@ -362,23 +362,20 @@ theorem no_GRMPolySolver : ¬ ∃ _ : GRMPolySolver, True := by
 /-
 AXIOM INVENTORY for DriftedLock.lean:
 
-Custom axioms (cross-repo mirrors):
-1. growth_gap_survives_poly : ∀ p : PolyBound, ∃ g, N_End g > N_Val (g + p.eval g)
-   — proved in ClassicalBridge.Mirror.CountingFunctions (ported from
-     pnp-integrated/PNP/AntiCompression/PolynomialAntiCompression.lean).
+Custom axioms: none.
 
-Standard Lean axioms: propext, Quot.sound (from list operations in transitively
-imported files).
+- growth_gap_survives_poly is a proved theorem (ported from
+  pnp-integrated, proved locally in CountingFunctions.lean).
+- SelfAppHeader is a parameter; classical_tm is proved in
+  ConcreteModel.lean.
 
-Axioms from ChainConnection (transitively imported via the import chain):
-2. classical_tm_exists : StepBoundedTM
-3. classical_selfapp_header_exists : SelfAppHeader
+Standard Lean axioms: propext, Classical.choice, Quot.sound.
 
 Notes:
-- The core lock theorem (drifted_lock) and counting impossibility (construction_super_poly)
-  use only growth_gap_survives_poly. Axioms (2) and (3) are only engaged when Section 9
-  references classicalGRM_hasFiniteDrift (from ChainConnection.lean).
-- The shift and PolyBoundedConstruction sections require no axioms beyond propext.
+- The core lock theorem (drifted_lock) and counting impossibility
+  (construction_super_poly) use only growth_gap_survives_poly.
+- The shift and PolyBoundedConstruction sections require no axioms
+  beyond propext.
 - This file introduces zero sorry.
 -/
 

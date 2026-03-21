@@ -448,13 +448,10 @@ Custom axioms introduced here: NONE.
   - Classical.choice (via the `classical` tactic and noncomputable Fintype.equivFin)
   Standard Lean axioms: propext, Classical.choice, Quot.sound.
 
-Axioms inherited (transitively, via imports):
-1. growth_gap_survives_poly (from Mirror/CountingFunctions.lean)
-   — Cross-repo mirror of proved result in pnp-integrated.
-2. classical_tm_exists (from TuringMachine/UniversalSimulation.lean)
-   — Turing 1936: a step-bounded TM model exists.
-3. classical_selfapp_header_exists (from TuringMachine/UniversalSimulation.lean)
-   — Kleene 1938: a fixed self-application header exists.
+No custom axioms inherited. All transitively imported results are proved:
+- growth_gap_survives_poly (proved in CountingFunctions.lean)
+- classical_tm (proved in ConcreteModel.lean)
+- SelfAppHeader is a parameter
 
 Standard Lean axioms: propext, Classical.choice, Quot.sound.
 

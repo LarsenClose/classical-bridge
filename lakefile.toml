@@ -11,5 +11,20 @@ name = "mathlib"
 scope = "leanprover-community"
 rev = "v4.28.0"
 
+[[require]]
+name = "witness-transport"
+git = "https://github.com/LarsenClose/witness-transport.git"
+rev = "0129efa06a524c767998896a2f929ec914faccf7"
+
+[[require]]
+name = "pnp-publication"
+git = "https://github.com/LarsenClose/pnp-integrated.git"
+rev = "232970240f3231523d37f3bcc73758030188796f"
+
+[[require]]
+name = "classical-constraints"
+git = "https://github.com/LarsenClose/classical-constraints.git"
+rev = "004d4e352e10198cb36d514a2cfd87b83dfe22f2"
+
 [[lean_lib]]
 name = "ClassicalBridge"

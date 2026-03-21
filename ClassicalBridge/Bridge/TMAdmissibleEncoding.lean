@@ -20,8 +20,8 @@ The construction assembles pieces from TuringMachine/UniversalSimulation.lean:
   overhead := headerLen (the self-application header length)
   selfApp_bounded := selfApp_grade_bounded (proved)
 
-STATUS: 0 sorry. Axiom profile: inherits classical_tm_exists and
-classical_selfapp_header_exists from UniversalSimulation.lean.
+STATUS: 0 sorry. Zero custom axioms. SelfAppHeader is a parameter;
+classical_tm is proved in ConcreteModel.lean.
 -/
 
 import ClassicalBridge.Mirror.AdmissibleEncoding
@@ -30,6 +30,8 @@ import ClassicalBridge.TuringMachine.UniversalSimulation
 namespace ClassicalBridge.Bridge
 
 open ClassicalBridge.TM
+
+variable (h : SelfAppHeader)
 
 -- ════════════════════════════════════════════════════════════
 -- THE MAIN THEOREM: Classical TM computation is an AdmissibleEncoding
@@ -59,22 +61,18 @@ open ClassicalBridge.TM
     - overhead = headerLen (a fixed constant, independent of input)
     - selfApp_bounded: grade(unfold(fold(x))) ≤ grade(x) + headerLen
 
-    AXIOM DEPENDENCY: This construction uses two axioms from
-    UniversalSimulation.lean:
-    1. classical_tm_exists (Turing 1936)
-    2. classical_selfapp_header_exists (Kleene 1938)
-
-    The structural theorems (roundtrip, grade bound) are PROVED,
-    not axiomatized. The axioms only assert that the classical
-    objects (TMs, self-application headers) exist. -/
+    AXIOM DEPENDENCY: Zero custom axioms. classical_tm is proved
+    via Mathlib's evaln (ConcreteModel.lean). SelfAppHeader is a
+    parameter. The structural theorems (roundtrip, grade bound)
+    are proved from the definitions. -/
 noncomputable def classicalAdmissibleEncoding : AdmissibleEncoding where
   Names := BinString
-  fold := bridgeFold
-  unfold := bridgeUnfold
-  roundtrip := bridge_roundtrip
+  fold := bridgeFold h
+  unfold := bridgeUnfold h
+  roundtrip := bridge_roundtrip h
   grade := grade
-  overhead := bridgeOverhead
-  selfApp_bounded := bridge_selfApp_bounded
+  overhead := bridgeOverhead h
+  selfApp_bounded := bridge_selfApp_bounded h
 
 -- ════════════════════════════════════════════════════════════
 -- Derived: the induced GRM
@@ -83,21 +81,21 @@ noncomputable def classicalAdmissibleEncoding : AdmissibleEncoding where
 /-- The GradedReflModel induced by classical TM computation.
     This is the model in which the P vs NP regime question lives. -/
 noncomputable def classicalGRM : GradedReflModel :=
-  classicalAdmissibleEncoding.toGRM
+  (classicalAdmissibleEncoding h).toGRM
 
 /-- selfApp on the classical GRM is header ++ (x.drop headerLen):
     prepend the self-application header after stripping it.
     This is the TM self-interpretation operation at the
     description-length level. -/
 theorem classicalGRM_selfApp_eq (x : BinString) :
-    classicalGRM.selfApp x = bridgeUnfold (bridgeFold x) := rfl
+    (classicalGRM h).selfApp x = bridgeUnfold h (bridgeFold h x) := rfl
 
 /-- The classical GRM has finite drift at its overhead parameter.
     This is immediate from the AdmissibleEncoding construction. -/
 theorem classicalGRM_finiteDrift :
-    ∃ k, ∀ x, classicalGRM.grade (classicalGRM.selfApp x) ≤
-              classicalGRM.grade x + k :=
-  ⟨bridgeOverhead, bridge_selfApp_bounded⟩
+    ∃ k, ∀ x, (classicalGRM h).grade ((classicalGRM h).selfApp x) ≤
+              (classicalGRM h).grade x + k :=
+  ⟨bridgeOverhead h, bridge_selfApp_bounded h⟩
 
 -- ════════════════════════════════════════════════════════════
 -- Axiom audit
@@ -106,22 +104,17 @@ theorem classicalGRM_finiteDrift :
 /-
 AXIOM INVENTORY for classicalAdmissibleEncoding:
 
-Custom axioms (from UniversalSimulation.lean):
-1. classical_tm_exists : StepBoundedTM
-2. classical_selfapp_header_exists : SelfAppHeader
+Custom axioms: none.
 
-Standard Lean axioms: propext, Quot.sound (from list operations).
+- classical_tm is proved in ConcreteModel.lean (wraps Mathlib's
+  Nat.Partrec.Code.evaln).
+- SelfAppHeader is a parameter, not an axiom.
+
+Standard Lean axioms: propext, Quot.sound, Classical.choice.
 
 The roundtrip and grade bound are THEOREMS, not axioms.
 They follow from the definitions of tmFold (List.drop) and
 tmUnfold (List.append) plus basic list arithmetic.
-
-The custom axioms assert only EXISTENCE of classical objects
-(TMs and self-application headers). They do not assert any
-properties beyond what is built into the StepBoundedTM and
-SelfAppHeader structures. The bridge properties (roundtrip,
-grade bound) are structural consequences of the fold/unfold
-definitions, not of the axioms.
 -/
 
 end ClassicalBridge.Bridge

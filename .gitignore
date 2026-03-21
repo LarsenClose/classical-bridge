@@ -2,4 +2,3 @@
 build/
 lake-packages/
 *.olean
-.claude/

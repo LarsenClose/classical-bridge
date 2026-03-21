@@ -9,7 +9,7 @@ characterization of classicalGRM.
 This file connects the dynamic drift infrastructure from witness-transport
 to classicalGRM. The key mathematical fact is:
 
-  classicalGRM.selfApp(x) = header ++ x.drop(headerLen)
+  (classicalGRM h).selfApp(x) = header ++ x.drop(headerLen)
 
 For x with grade ≥ headerLen:
   grade(selfApp(x)) = headerLen + (grade(x) - headerLen) = grade(x)
@@ -44,6 +44,8 @@ namespace ClassicalBridge.Bridge
 
 open ClassicalBridge.TM
 open ClassicalBridge.Reductions
+
+variable (h : SelfAppHeader)
 
 -- ════════════════════════════════════════════════════════════
 -- Section 1: Mirror predicates for ClassicalBridge.GradedReflModel
@@ -104,16 +106,16 @@ theorem eventuallyZeroDriftBounded_finiteDrift
       grade(selfApp(x)) = grade(x)  [by classicalGRM_selfApp_grade_large]
     So grade(selfApp(x)) ≤ grade(x). -/
 theorem classicalGRM_eventuallyZeroDrift :
-    EventuallyZeroDrift classicalGRM bridgeOverhead := by
+    EventuallyZeroDrift (classicalGRM h) (bridgeOverhead h) := by
   intro x hx
-  have h := classicalGRM_selfApp_grade_large x hx
+  have h := classicalGRM_selfApp_grade_large h x hx
   omega
 
 /-- For grade(x) ≥ bridgeOverhead, selfApp preserves grade exactly. -/
 theorem classicalGRM_drift_zero_above_threshold (x : BinString)
-    (hx : classicalGRM.grade x ≥ bridgeOverhead) :
-    classicalGRM.grade (classicalGRM.selfApp x) = classicalGRM.grade x :=
-  classicalGRM_selfApp_grade_large x hx
+    (hx : (classicalGRM h).grade x ≥ bridgeOverhead h) :
+    (classicalGRM h).grade ((classicalGRM h).selfApp x) = (classicalGRM h).grade x :=
+  classicalGRM_selfApp_grade_large h x hx
 
 -- ════════════════════════════════════════════════════════════
 -- Section 4: classicalGRM satisfies EventuallyZeroDriftBounded
@@ -127,15 +129,15 @@ theorem classicalGRM_drift_zero_above_threshold (x : BinString)
     Below threshold (grade < bridgeOverhead):
       grade(selfApp(x)) ≤ bridgeOverhead ≤ grade(x) + bridgeOverhead  [bounded drift] -/
 theorem classicalGRM_eventuallyZeroDriftBounded :
-    EventuallyZeroDriftBounded classicalGRM bridgeOverhead bridgeOverhead := by
+    EventuallyZeroDriftBounded (classicalGRM h) (bridgeOverhead h) (bridgeOverhead h) := by
   refine ⟨?_, ?_⟩
   · -- Above threshold: drift is 0
     intro x hx
-    have h := classicalGRM_selfApp_grade_large x hx
+    have h := classicalGRM_selfApp_grade_large h x hx
     omega
   · -- Below threshold: grade(selfApp(x)) ≤ bridgeOverhead ≤ grade(x) + bridgeOverhead
     intro x hx
-    have h := classicalGRM_selfApp_grade_small x hx
+    have h := classicalGRM_selfApp_grade_small h x hx
     omega
 
 -- ════════════════════════════════════════════════════════════
@@ -157,35 +159,35 @@ theorem classicalGRM_eventuallyZeroDriftBounded :
     bridgeOverhead). classicalDynamicDrift is the tightest POINTWISE bound but
     it does not accumulate over smaller grades.
 
-    Noncomputable because bridgeOverhead depends on classical_selfapp_header_exists. -/
+    Noncomputable because bridgeOverhead depends on the SelfAppHeader parameter. -/
 noncomputable def classicalDynamicDrift (g : Nat) : Nat :=
-  if g ≥ bridgeOverhead then 0 else bridgeOverhead
+  if g ≥ bridgeOverhead h then 0 else bridgeOverhead h
 
 /-- classicalDynamicDrift witnesses the pointwise drift bound for classicalGRM. -/
 theorem classicalGRM_dynamicDrift_bound (x : BinString) :
-    classicalGRM.grade (classicalGRM.selfApp x) ≤
-    classicalGRM.grade x + classicalDynamicDrift (classicalGRM.grade x) := by
+    (classicalGRM h).grade ((classicalGRM h).selfApp x) ≤
+    (classicalGRM h).grade x + classicalDynamicDrift h ((classicalGRM h).grade x) := by
   simp only [classicalDynamicDrift]
   split_ifs with hge
   · -- grade(x) ≥ bridgeOverhead: drift is 0, grade is preserved exactly
     simp only [Nat.add_zero]
-    exact Nat.le_of_eq (classicalGRM_selfApp_grade_large x hge)
+    exact Nat.le_of_eq (classicalGRM_selfApp_grade_large h x hge)
   · -- grade(x) < bridgeOverhead: grade(selfApp(x)) ≤ bridgeOverhead ≤ grade(x) + bridgeOverhead
     simp only [ge_iff_le, Nat.not_le] at hge
-    have hsmall := classicalGRM_selfApp_grade_small x hge
+    have hsmall := classicalGRM_selfApp_grade_small h x hge
     omega
 
 /-- In the zero-drift region (grade ≥ bridgeOverhead), classicalDynamicDrift is 0. -/
-theorem classicalDynamicDrift_zero_above (g : Nat) (hg : g ≥ bridgeOverhead) :
-    classicalDynamicDrift g = 0 := by
+theorem classicalDynamicDrift_zero_above (g : Nat) (hg : g ≥ bridgeOverhead h) :
+    classicalDynamicDrift h g = 0 := by
   simp [classicalDynamicDrift, hg]
 
 /-- In the positive-drift region (grade < bridgeOverhead), classicalDynamicDrift
     equals bridgeOverhead. -/
-theorem classicalDynamicDrift_overhead_below (g : Nat) (hg : g < bridgeOverhead) :
-    classicalDynamicDrift g = bridgeOverhead := by
+theorem classicalDynamicDrift_overhead_below (g : Nat) (hg : g < bridgeOverhead h) :
+    classicalDynamicDrift h g = bridgeOverhead h := by
   simp only [classicalDynamicDrift]
-  have : ¬(g ≥ bridgeOverhead) := Nat.not_le.mpr hg
+  have : ¬(g ≥ bridgeOverhead h) := Nat.not_le.mpr hg
   simp [this]
 
 -- ════════════════════════════════════════════════════════════
@@ -198,18 +200,18 @@ theorem classicalDynamicDrift_overhead_below (g : Nat) (hg : g < bridgeOverhead)
     two-case structure: small inputs (drift ≤ bridgeOverhead) and large
     inputs (drift = 0). -/
 theorem classicalGRM_finiteDrift_from_eventuallyZero :
-    HasFiniteDrift classicalAdmissibleEncoding bridgeOverhead :=
-  eventuallyZeroDriftBounded_finiteDrift classicalAdmissibleEncoding
-    bridgeOverhead bridgeOverhead
-    classicalGRM_eventuallyZeroDriftBounded
+    HasFiniteDrift (classicalAdmissibleEncoding h) (bridgeOverhead h) :=
+  eventuallyZeroDriftBounded_finiteDrift (classicalAdmissibleEncoding h)
+    (bridgeOverhead h) (bridgeOverhead h)
+    (classicalGRM_eventuallyZeroDriftBounded h)
 
 /-- classicalGRM admits the classicalDynamicDrift witness:
     grade(selfApp(x)) ≤ grade(x) + classicalDynamicDrift(grade(x)) for all x. -/
 theorem classicalGRM_admits_dynamicDrift :
     ∀ x : BinString,
-      classicalGRM.grade (classicalGRM.selfApp x) ≤
-      classicalGRM.grade x + classicalDynamicDrift (classicalGRM.grade x) :=
-  classicalGRM_dynamicDrift_bound
+      (classicalGRM h).grade ((classicalGRM h).selfApp x) ≤
+      (classicalGRM h).grade x + classicalDynamicDrift h ((classicalGRM h).grade x) :=
+  classicalGRM_dynamicDrift_bound h
 
 -- ════════════════════════════════════════════════════════════
 -- Section 7: Explicit region characterizations
@@ -217,15 +219,15 @@ theorem classicalGRM_admits_dynamicDrift :
 
 /-- Zero-drift region: selfApp is grade-preserving above bridgeOverhead. -/
 theorem classicalGRM_selfApp_grade_preserving_above
-    (x : BinString) (hx : classicalGRM.grade x ≥ bridgeOverhead) :
-    classicalGRM.grade (classicalGRM.selfApp x) = classicalGRM.grade x :=
-  classicalGRM_selfApp_grade_large x hx
+    (x : BinString) (hx : (classicalGRM h).grade x ≥ bridgeOverhead h) :
+    (classicalGRM h).grade ((classicalGRM h).selfApp x) = (classicalGRM h).grade x :=
+  classicalGRM_selfApp_grade_large h x hx
 
 /-- Bounded-drift region: selfApp grade is bounded above by bridgeOverhead. -/
 theorem classicalGRM_selfApp_grade_bounded_below
-    (x : BinString) (hx : classicalGRM.grade x < bridgeOverhead) :
-    classicalGRM.grade (classicalGRM.selfApp x) ≤ bridgeOverhead :=
-  classicalGRM_selfApp_grade_small x hx
+    (x : BinString) (hx : (classicalGRM h).grade x < bridgeOverhead h) :
+    (classicalGRM h).grade ((classicalGRM h).selfApp x) ≤ bridgeOverhead h :=
+  classicalGRM_selfApp_grade_small h x hx
 
 -- ════════════════════════════════════════════════════════════
 -- Section 8: Summary theorem
@@ -244,15 +246,15 @@ theorem classicalGRM_selfApp_grade_bounded_below
 
     (4) HasFiniteDrift at bridgeOverhead (derived from the dynamic structure) -/
 theorem classicalGRM_dynamic_drift_summary :
-    EventuallyZeroDrift classicalGRM bridgeOverhead ∧
-    EventuallyZeroDriftBounded classicalGRM bridgeOverhead bridgeOverhead ∧
-    (∀ x : BinString, classicalGRM.grade (classicalGRM.selfApp x) ≤
-      classicalGRM.grade x + classicalDynamicDrift (classicalGRM.grade x)) ∧
-    HasFiniteDrift classicalAdmissibleEncoding bridgeOverhead :=
-  ⟨classicalGRM_eventuallyZeroDrift,
-   classicalGRM_eventuallyZeroDriftBounded,
-   classicalGRM_dynamicDrift_bound,
-   classicalGRM_finiteDrift_from_eventuallyZero⟩
+    EventuallyZeroDrift (classicalGRM h) (bridgeOverhead h) ∧
+    EventuallyZeroDriftBounded (classicalGRM h) (bridgeOverhead h) (bridgeOverhead h) ∧
+    (∀ x : BinString, (classicalGRM h).grade ((classicalGRM h).selfApp x) ≤
+      (classicalGRM h).grade x + classicalDynamicDrift h ((classicalGRM h).grade x)) ∧
+    HasFiniteDrift (classicalAdmissibleEncoding h) (bridgeOverhead h) :=
+  ⟨classicalGRM_eventuallyZeroDrift h,
+   classicalGRM_eventuallyZeroDriftBounded h,
+   classicalGRM_dynamicDrift_bound h,
+   classicalGRM_finiteDrift_from_eventuallyZero h⟩
 
 -- ════════════════════════════════════════════════════════════
 -- Axiom audit
@@ -261,19 +263,15 @@ theorem classicalGRM_dynamic_drift_summary :
 /-
 AXIOM INVENTORY for DynamicDriftBridge.lean:
 
-Custom axioms (inherited transitively from UniversalSimulation.lean):
-1. classical_tm_exists : StepBoundedTM
-2. classical_selfapp_header_exists : SelfAppHeader
+Custom axioms: none. SelfAppHeader is a parameter; classical_tm
+is proved in ConcreteModel.lean.
 
-Standard Lean axioms: propext, Quot.sound (from list operations).
+Standard Lean axioms: propext, Classical.choice, Quot.sound.
 
-All theorems in this file are PROVED, not axiomatized.
-The proofs use:
+All theorems in this file are PROVED. The proofs use:
 - classicalGRM_selfApp_grade_large (from ChainConnection.lean)
 - classicalGRM_selfApp_grade_small (from ChainConnection.lean)
 - Basic arithmetic (omega)
-
-No additional axioms beyond those already used by ChainConnection.lean.
 -/
 
 #check @classicalGRM_eventuallyZeroDrift

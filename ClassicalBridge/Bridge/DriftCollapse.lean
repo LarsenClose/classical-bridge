@@ -80,6 +80,8 @@ open ClassicalBridge
 open ClassicalBridge.TM
 open ClassicalBridge.Reductions
 
+variable (h : SelfAppHeader)
+
 -- ════════════════════════════════════════════════════════════
 -- Section 2: Condition (A) implies EventuallyZeroDrift
 -- ════════════════════════════════════════════════════════════
@@ -241,18 +243,18 @@ theorem monotone_fold_unfold_eventuallyZeroDrift_gradePreservingAbove
 
 /-- classicalGRM satisfies (A): selfApp is grade-preserving above bridgeOverhead. -/
 theorem classicalGRM_gradePreservingAbove :
-    classicalGRM.GradePreservingAbove bridgeOverhead :=
-  fun x hx => classicalGRM_drift_zero_above_threshold x hx
+    (classicalGRM h).GradePreservingAbove (bridgeOverhead h) :=
+  fun x hx => classicalGRM_drift_zero_above_threshold h x hx
 
 /-- classicalGRM satisfies (B): selfApp grade ≤ bridgeOverhead for small inputs. -/
 theorem classicalGRM_selfAppBoundedBelow :
-    classicalGRM.SelfAppBoundedBelow bridgeOverhead bridgeOverhead :=
-  fun x hx => classicalGRM_selfApp_grade_bounded_below x hx
+    (classicalGRM h).SelfAppBoundedBelow (bridgeOverhead h) (bridgeOverhead h) :=
+  fun x hx => classicalGRM_selfApp_grade_bounded_below h x hx
 
 /-- classicalGRM satisfies (C): selfApp adds at most bridgeOverhead everywhere. -/
 theorem classicalGRM_additiveOverheadBound :
-    classicalGRM.AdditiveOverheadBound bridgeOverhead :=
-  fun x => bridge_selfApp_bounded x
+    (classicalGRM h).AdditiveOverheadBound (bridgeOverhead h) :=
+  fun x => bridge_selfApp_bounded h x
 
 -- ════════════════════════════════════════════════════════════
 -- Section 9: Summary
@@ -261,15 +263,15 @@ theorem classicalGRM_additiveOverheadBound :
 /-- Complete drift collapse characterization for classicalGRM.
     It satisfies all three abstract conditions at threshold/bound bridgeOverhead. -/
 theorem classicalGRM_drift_collapse_summary :
-    classicalGRM.GradePreservingAbove bridgeOverhead ∧
-    classicalGRM.SelfAppBoundedBelow bridgeOverhead bridgeOverhead ∧
-    EventuallyZeroDriftBounded classicalGRM bridgeOverhead bridgeOverhead ∧
-    classicalGRM.AdditiveOverheadBound bridgeOverhead :=
-  ⟨classicalGRM_gradePreservingAbove,
-   classicalGRM_selfAppBoundedBelow,
+    (classicalGRM h).GradePreservingAbove (bridgeOverhead h) ∧
+    (classicalGRM h).SelfAppBoundedBelow (bridgeOverhead h) (bridgeOverhead h) ∧
+    EventuallyZeroDriftBounded (classicalGRM h) (bridgeOverhead h) (bridgeOverhead h) ∧
+    (classicalGRM h).AdditiveOverheadBound (bridgeOverhead h) :=
+  ⟨classicalGRM_gradePreservingAbove h,
+   classicalGRM_selfAppBoundedBelow h,
    gradePreserving_and_bounded_eventuallyZeroDriftBounded
-     classicalGRM classicalGRM_gradePreservingAbove classicalGRM_selfAppBoundedBelow,
-   classicalGRM_additiveOverheadBound⟩
+     (classicalGRM h) (classicalGRM_gradePreservingAbove h) (classicalGRM_selfAppBoundedBelow h),
+   classicalGRM_additiveOverheadBound h⟩
 
 /-- Any GRM satisfying (A) and (B) has FiniteDrift — the abstract version
     of the classicalGRM finite-drift theorem. -/

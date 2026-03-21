@@ -19,4 +19,5 @@ import ClassicalBridge.Bridge.PolyMarkovBridge
 import ClassicalBridge.Reductions.KarpPreservation
 import ClassicalBridge.Complexity.Basic
 import ClassicalBridge.Complexity.PolyMarkovConnection
+import ClassicalBridge.Complexity.FoldUnfoldNonclosure
 import ClassicalBridge.Composition.CrossRepoComposition

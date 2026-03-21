@@ -22,7 +22,7 @@ KEY RESULTS:
    models WITH unbounded self-application, and classicalGRM is not one.
 5. For classicalGRM to be in the separation regime, the self-application
    header would need to grow without bound as a function of the input.
-   But the header is a fixed string (axiom: classical_selfapp_header_exists),
+   But the header is a fixed string (axiom: h),
    so this is impossible.
 
 CONNECTION TO classical-constraints:
@@ -39,9 +39,8 @@ characterizes which regime the classical model occupies. Together they say:
 the classical TM model, with its fixed self-application header, is in the
 finite-drift regime, not the separation regime.
 
-STATUS: 0 sorry. Axiom profile: inherits classical_tm_exists and
-classical_selfapp_header_exists from UniversalSimulation.lean (via
-TMAdmissibleEncoding.lean).
+STATUS: 0 sorry. Zero custom axioms. SelfAppHeader is a parameter;
+classical_tm is proved in ConcreteModel.lean.
 -/
 
 import ClassicalBridge.Bridge.TMAdmissibleEncoding
@@ -51,6 +50,8 @@ namespace ClassicalBridge.Bridge
 
 open ClassicalBridge.TM
 open ClassicalBridge.Reductions
+
+variable (h : SelfAppHeader)
 
 -- ════════════════════════════════════════════════════════════
 -- Section 1: classicalGRM regime — finite drift
@@ -63,8 +64,8 @@ open ClassicalBridge.Reductions
 
     This is immediate from the AdmissibleEncoding construction. -/
 theorem classicalGRM_hasFiniteDrift :
-    HasFiniteDrift classicalAdmissibleEncoding bridgeOverhead :=
-  admissible_has_finiteDrift classicalAdmissibleEncoding
+    HasFiniteDrift (classicalAdmissibleEncoding h) (bridgeOverhead h) :=
+  admissible_has_finiteDrift (classicalAdmissibleEncoding h)
 
 -- ════════════════════════════════════════════════════════════
 -- Section 2: classicalGRM does NOT have HasUnboundedGap
@@ -78,10 +79,10 @@ theorem classicalGRM_hasFiniteDrift :
 
     This is the first half of the regime classification. -/
 theorem classicalGRM_not_hasUnboundedGap :
-    ¬ HasUnboundedGap classicalAdmissibleEncoding := by
+    ¬ HasUnboundedGap (classicalAdmissibleEncoding h) := by
   intro hU
-  exact finiteDrift_not_unboundedGap classicalAdmissibleEncoding
-    bridgeOverhead classicalGRM_hasFiniteDrift hU
+  exact finiteDrift_not_unboundedGap (classicalAdmissibleEncoding h)
+    (bridgeOverhead h) (classicalGRM_hasFiniteDrift h) hU
 
 -- ════════════════════════════════════════════════════════════
 -- Section 3: classicalGRM does NOT have SelfAppUnbounded
@@ -142,22 +143,22 @@ theorem classicalGRM_not_hasUnboundedGap :
     SelfAppUnbounded requires overflow at EVERY d.
     Contradiction. -/
 theorem classicalGRM_not_selfAppUnbounded :
-    ¬ SelfAppUnbounded classicalGRM := by
+    ¬ SelfAppUnbounded (classicalGRM h) := by
   intro ⟨overflows⟩
   -- At d = bridgeOverhead, there must be x with grade(x) <= d
   -- and grade(selfApp(x)) > d.
-  obtain ⟨x, hxd, hxsa⟩ := overflows bridgeOverhead
+  obtain ⟨x, hxd, hxsa⟩ := overflows (bridgeOverhead h)
   -- But finite drift gives grade(selfApp(x)) <= grade(x) + bridgeOverhead
-  have hfd := bridge_selfApp_bounded x
-  -- grade(selfApp(x)) = grade(classicalGRM.selfApp x)
+  have hfd := bridge_selfApp_bounded h x
+  -- grade(selfApp(x)) = grade((classicalGRM h).selfApp x)
   -- = grade(bridgeUnfold(bridgeFold(x)))
   -- which is what bridge_selfApp_bounded bounds.
-  -- classicalGRM.selfApp x = bridgeUnfold(bridgeFold(x)) by rfl
+  -- (classicalGRM h).selfApp x = bridgeUnfold(bridgeFold(x)) by rfl
   show False
-  -- hxd: classicalGRM.grade x <= bridgeOverhead
-  -- hxsa: classicalGRM.grade (classicalGRM.selfApp x) > bridgeOverhead
-  -- hfd: grade (bridgeUnfold (bridgeFold x)) <= grade x + bridgeOverhead
-  -- classicalGRM.grade = grade, classicalGRM.selfApp x = bridgeUnfold (bridgeFold x)
+  -- hxd: (classicalGRM h).grade x <= bridgeOverhead
+  -- hxsa: (classicalGRM h).grade ((classicalGRM h).selfApp x) > bridgeOverhead
+  -- hfd: grade (bridgeUnfold h (bridgeFold h x)) <= grade x + bridgeOverhead
+  -- (classicalGRM h).grade = grade, (classicalGRM h).selfApp x = bridgeUnfold h (bridgeFold h x)
   -- So: grade(bridgeUnfold(bridgeFold(x))) > bridgeOverhead
   -- and: grade(bridgeUnfold(bridgeFold(x))) <= grade(x) + bridgeOverhead
   -- and: grade(x) <= bridgeOverhead
@@ -187,10 +188,10 @@ theorem classicalGRM_not_selfAppUnbounded :
   -- But overflows says there IS such x. Contradiction.
   --
   -- We need to unfold the definitions to get at this.
-  -- classicalGRM.grade = classicalAdmissibleEncoding.grade = grade
-  -- classicalGRM.selfApp x = classicalGRM.unfold (classicalGRM.fold x)
-  --                        = bridgeUnfold (bridgeFold x)
-  -- bridgeFold x = tmFold canonicalSpec.selfAppHeader x = x.drop headerLen
+  -- (classicalGRM h).grade = classicalAdmissibleEncoding.grade = grade
+  -- (classicalGRM h).selfApp x = classicalGRM.unfold (classicalGRM.fold x)
+  --                        = bridgeUnfold h (bridgeFold h x)
+  -- bridgeFold h x = tmFold canonicalSpec.selfAppHeader x = x.drop headerLen
   -- bridgeUnfold y = tmUnfold canonicalSpec.selfAppHeader y = header ++ y
   -- So grade(selfApp(x)) = grade(header ++ x.drop headerLen)
   --                       = headerLen + (x.drop headerLen).length
@@ -214,26 +215,26 @@ theorem classicalGRM_not_selfAppUnbounded :
   -- But hxsa: grade(selfApp(x)) > bridgeOverhead. Contradiction with <=.
   --
   -- Let's write the actual proof:
-  change classicalGRM.grade (classicalGRM.selfApp x) > bridgeOverhead at hxsa
-  have key : classicalGRM.grade (classicalGRM.selfApp x) ≤ bridgeOverhead := by
+  change (classicalGRM h).grade ((classicalGRM h).selfApp x) > bridgeOverhead h at hxsa
+  have key : (classicalGRM h).grade ((classicalGRM h).selfApp x) ≤ bridgeOverhead h := by
     -- unfold to get at the list operations
-    show grade (bridgeUnfold (bridgeFold x)) ≤ bridgeOverhead
+    show grade (bridgeUnfold h (bridgeFold h x)) ≤ bridgeOverhead h
     simp only [bridgeUnfold, bridgeFold, canonicalSpec, TMSelfAppSpec.unfold,
                TMSelfAppSpec.fold, tmUnfold, tmFold, grade, List.length_append,
                List.length_drop]
     -- Now goal: headerLen + (x.length - headerLen) <= bridgeOverhead
     -- where bridgeOverhead = headerLen
-    show classical_selfapp_header_exists.header.length +
-         (x.length - classical_selfapp_header_exists.headerLen) ≤
-         classical_selfapp_header_exists.headerLen
-    rw [classical_selfapp_header_exists.headerLen_eq]
+    show h.header.length +
+         (x.length - h.headerLen) ≤
+         h.headerLen
+    rw [h.headerLen_eq]
     -- Now: header.length + (x.length - header.length) <= header.length
     -- Since grade(x) <= bridgeOverhead = headerLen = header.length (from hxd):
-    have hxlen : x.length ≤ classical_selfapp_header_exists.header.length := by
+    have hxlen : x.length ≤ h.header.length := by
       have := hxd
       simp only [classicalGRM, classicalAdmissibleEncoding, AdmissibleEncoding.toGRM,
                  grade, bridgeOverhead, canonicalSpec, TMSelfAppSpec.overhead] at this
-      rw [classical_selfapp_header_exists.headerLen_eq] at this
+      rw [h.headerLen_eq] at this
       exact this
     omega
   omega
@@ -278,32 +279,32 @@ theorem classicalGRM_not_selfAppUnbounded :
     d = bridgeOverhead, which is PEqNP (there exists a grade
     through which selfApp factors). -/
 theorem classicalGRM_factorsThrough :
-    FactorsThrough classicalGRM classicalGRM.selfApp bridgeOverhead := by
+    FactorsThrough (classicalGRM h) (classicalGRM h).selfApp (bridgeOverhead h) := by
   intro x hx
   -- grade(selfApp(x)) <= grade(x) + bridgeOverhead by finite drift
   -- But we can do better: grade(selfApp(x)) <= max(grade(x), bridgeOverhead)
   -- Since grade(x) <= bridgeOverhead, this gives <= bridgeOverhead.
-  show classicalGRM.grade (classicalGRM.selfApp x) ≤ bridgeOverhead
+  show (classicalGRM h).grade ((classicalGRM h).selfApp x) ≤ bridgeOverhead h
   -- Unfold to list operations
-  show grade (bridgeUnfold (bridgeFold x)) ≤ bridgeOverhead
+  show grade (bridgeUnfold h (bridgeFold h x)) ≤ bridgeOverhead h
   simp only [bridgeUnfold, bridgeFold, canonicalSpec, TMSelfAppSpec.unfold,
              TMSelfAppSpec.fold, tmUnfold, tmFold, grade, List.length_append,
              List.length_drop]
-  show classical_selfapp_header_exists.header.length +
-       (x.length - classical_selfapp_header_exists.headerLen) ≤
-       classical_selfapp_header_exists.headerLen
-  rw [classical_selfapp_header_exists.headerLen_eq]
-  have hxlen : x.length ≤ classical_selfapp_header_exists.header.length := by
+  show h.header.length +
+       (x.length - h.headerLen) ≤
+       h.headerLen
+  rw [h.headerLen_eq]
+  have hxlen : x.length ≤ h.header.length := by
     have := hx
     simp only [classicalGRM, classicalAdmissibleEncoding, AdmissibleEncoding.toGRM,
                grade, bridgeOverhead, canonicalSpec, TMSelfAppSpec.overhead] at this
-    rw [classical_selfapp_header_exists.headerLen_eq] at this
+    rw [h.headerLen_eq] at this
     exact this
   omega
 
 /-- classicalGRM satisfies PEqNP: selfApp factors through some grade. -/
-theorem classicalGRM_PEqNP : PEqNP classicalGRM :=
-  ⟨bridgeOverhead, classicalGRM_factorsThrough⟩
+theorem classicalGRM_PEqNP : PEqNP (classicalGRM h) :=
+  ⟨bridgeOverhead h, classicalGRM_factorsThrough h⟩
 
 -- ════════════════════════════════════════════════════════════
 -- Section 6: classicalAdmissibleEncoding is projectional
@@ -318,41 +319,41 @@ theorem classicalGRM_PEqNP : PEqNP classicalGRM :=
     Specifically, when grade(x) >= headerLen:
     grade(selfApp(x)) = headerLen + (grade(x) - headerLen) = grade(x). -/
 theorem classicalGRM_selfApp_grade_large (x : BinString)
-    (hx : grade x ≥ bridgeOverhead) :
-    classicalGRM.grade (classicalGRM.selfApp x) = classicalGRM.grade x := by
-  show grade (bridgeUnfold (bridgeFold x)) = grade x
+    (hx : grade x ≥ bridgeOverhead h) :
+    (classicalGRM h).grade ((classicalGRM h).selfApp x) = (classicalGRM h).grade x := by
+  show grade (bridgeUnfold h (bridgeFold h x)) = grade x
   simp only [bridgeUnfold, bridgeFold, canonicalSpec, TMSelfAppSpec.unfold,
              TMSelfAppSpec.fold, tmUnfold, tmFold, grade, List.length_append,
              List.length_drop]
-  show classical_selfapp_header_exists.header.length +
-       (x.length - classical_selfapp_header_exists.headerLen) = x.length
-  rw [classical_selfapp_header_exists.headerLen_eq]
-  have hxlen : x.length ≥ classical_selfapp_header_exists.header.length := by
-    have := hx
-    simp only [bridgeOverhead, canonicalSpec, TMSelfAppSpec.overhead, grade] at this
-    rw [classical_selfapp_header_exists.headerLen_eq] at this
-    exact this
+  show h.header.length +
+       (x.length - h.headerLen) = x.length
+  rw [h.headerLen_eq]
+  have hxlen : x.length ≥ h.header.length := by
+    have : grade x ≥ h.headerLen := by
+      calc grade x ≥ bridgeOverhead h := hx
+        _ = h.headerLen := rfl
+    rw [h.headerLen_eq] at this; exact this
   omega
 
 /-- For inputs below the overhead threshold, selfApp returns a string of
     exactly headerLen. This is because fold strips more characters than
     exist, yielding [], and unfold prepends the full header. -/
 theorem classicalGRM_selfApp_grade_small (x : BinString)
-    (hx : grade x < bridgeOverhead) :
-    classicalGRM.grade (classicalGRM.selfApp x) ≤ bridgeOverhead := by
-  show grade (bridgeUnfold (bridgeFold x)) ≤ bridgeOverhead
+    (hx : grade x < bridgeOverhead h) :
+    (classicalGRM h).grade ((classicalGRM h).selfApp x) ≤ bridgeOverhead h := by
+  show grade (bridgeUnfold h (bridgeFold h x)) ≤ bridgeOverhead h
   simp only [bridgeUnfold, bridgeFold, canonicalSpec, TMSelfAppSpec.unfold,
              TMSelfAppSpec.fold, tmUnfold, tmFold, grade, List.length_append,
              List.length_drop]
-  show classical_selfapp_header_exists.header.length +
-       (x.length - classical_selfapp_header_exists.headerLen) ≤
-       classical_selfapp_header_exists.headerLen
-  rw [classical_selfapp_header_exists.headerLen_eq]
-  have hxlen : x.length < classical_selfapp_header_exists.header.length := by
-    have := hx
-    simp only [bridgeOverhead, canonicalSpec, TMSelfAppSpec.overhead, grade] at this
-    rw [classical_selfapp_header_exists.headerLen_eq] at this
-    exact this
+  show h.header.length +
+       (x.length - h.headerLen) ≤
+       h.headerLen
+  rw [h.headerLen_eq]
+  have hxlen : x.length < h.header.length := by
+    have : grade x < h.headerLen := by
+      calc grade x < bridgeOverhead h := hx
+        _ = h.headerLen := rfl
+    rw [h.headerLen_eq] at this; exact this
   omega
 
 -- ════════════════════════════════════════════════════════════
@@ -451,6 +452,25 @@ is a question about which regime the computation model occupies. The
 classical TM model occupies the finite-drift regime. The lock theorems
 characterize the separation regime. These are different regimes, and
 the boundary between them is proved invariant (in witness-transport).
+
+### The main results (SemanticBridge.lean, FoldUnfoldNonclosure.lean)
+
+The regime classification proved here is the foundation. The main results
+build on it:
+
+- `naming_cost_nonclosure` (SemanticBridge.lean): no GRMorphism from
+  T(classicalGRM h) to classicalGRM h when headerLen > 0. The fold/unfold
+  asymmetry blocks structural return from the substrate.
+
+- `fold_unfold_nonclosure` (FoldUnfoldNonclosure.lean): the same result
+  at the weakest structural level — FoldUnfoldSection, no grade condition.
+
+- `ClassicalAnswerSpace` (SemanticBridge.lean): the complete answer space
+  assembling the regime profile, growth gap, polynomial non-cover, and
+  the nonclosure.
+
+- `classical_computation_characterized` (SemanticBridge.lean): the three
+  cannots as a single conjunction.
 -/
 
 -- ════════════════════════════════════════════════════════════
@@ -468,17 +488,17 @@ the boundary between them is proved invariant (in witness-transport).
         the overhead threshold) -/
 theorem classicalGRM_regime_classification :
     -- (1) Finite drift
-    HasFiniteDrift classicalAdmissibleEncoding bridgeOverhead ∧
+    HasFiniteDrift (classicalAdmissibleEncoding h) (bridgeOverhead h) ∧
     -- (2) No unbounded gap
-    ¬ HasUnboundedGap classicalAdmissibleEncoding ∧
+    ¬ HasUnboundedGap (classicalAdmissibleEncoding h) ∧
     -- (3) No SelfAppUnbounded
-    ¬ SelfAppUnbounded classicalGRM ∧
+    ¬ SelfAppUnbounded (classicalGRM h) ∧
     -- (4) PEqNP
-    PEqNP classicalGRM :=
-  ⟨classicalGRM_hasFiniteDrift,
-   classicalGRM_not_hasUnboundedGap,
-   classicalGRM_not_selfAppUnbounded,
-   classicalGRM_PEqNP⟩
+    PEqNP (classicalGRM h) :=
+  ⟨classicalGRM_hasFiniteDrift h,
+   classicalGRM_not_hasUnboundedGap h,
+   classicalGRM_not_selfAppUnbounded h,
+   classicalGRM_PEqNP h⟩
 
 -- ════════════════════════════════════════════════════════════
 -- Axiom audit
@@ -487,20 +507,16 @@ theorem classicalGRM_regime_classification :
 /-
 AXIOM INVENTORY for ChainConnection.lean:
 
-Custom axioms (inherited from UniversalSimulation.lean via TMAdmissibleEncoding.lean):
-1. classical_tm_exists : StepBoundedTM
-2. classical_selfapp_header_exists : SelfAppHeader
+Custom axioms: none. SelfAppHeader is a parameter; classical_tm
+is proved in ConcreteModel.lean.
 
-Standard Lean axioms: propext, Quot.sound (from list operations).
+Standard Lean axioms: propext, Classical.choice, Quot.sound.
 
-All theorems in this file are PROVED, not axiomatized.
-The proofs use:
+All theorems in this file are PROVED. The proofs use:
 - The AdmissibleEncoding interface (roundtrip, selfApp_bounded)
 - Direct unfolding to list operations (List.length_append, List.length_drop)
 - The SelfAppHeader.headerLen_eq field (headerLen = header.length)
 - Basic arithmetic (omega)
-
-No additional axioms beyond those already used by TMAdmissibleEncoding.
 -/
 
 end ClassicalBridge.Bridge

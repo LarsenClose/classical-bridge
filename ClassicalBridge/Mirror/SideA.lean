@@ -31,7 +31,7 @@ import ClassicalBridge.Mirror.GRM
 namespace ClassicalBridge
 
 -- ════════════════════════════════════════════════════════════
--- Side A theorem (proved in witness-transport, mirrored as axiom)
+-- Side A theorem (proved directly from SelfAppUnbounded.overflows)
 -- ════════════════════════════════════════════════════════════
 
 /-- Mirror of sideA_bounded_selector_impossible from

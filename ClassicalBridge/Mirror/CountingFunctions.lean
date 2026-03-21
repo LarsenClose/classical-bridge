@@ -126,6 +126,34 @@ structure GradeStructure where
   N_End_mono : ∀ g, N_End g ≤ N_End (g + 1)
   N_L_mono : ∀ g, N_L g ≤ N_L (g + 1)
 
+/-- Injection bound: connects counting (N_End, N_L) to selfApp factoring.
+    Mirrored from WTS/ReturnPath/Naming/CountingBoundary.lean:139.
+
+    If selfApp factors through grade `overhead`, then the endomorphism count
+    at each grade is bounded by the carrier count at the enlarged grade.
+    Conditional on FactorsThrough — when selfApp is unbounded, the premise
+    is false and the bound holds vacuously. -/
+def HasInjectionBound (M : GradedReflModel) (gs : GradeStructure)
+    (overhead : Nat) : Prop :=
+  FactorsThrough M M.selfApp overhead →
+    ∀ g, gs.N_End g ≤ gs.N_L (g + overhead)
+
+/-- The binary grade structure: N_End and N_Val as counting functions.
+    Mirrored from WTS/ReturnPath/Naming/CountingBoundary.lean:123. -/
+def binaryGradeStructure : GradeStructure where
+  N_End := N_End
+  N_L := N_Val
+  N_End_mono := fun g => by
+    unfold N_End
+    exact Nat.le_trans (Nat.pow_le_pow_left (N_Val_mono (Nat.le_succ g)) _)
+      (Nat.pow_le_pow_right (N_Val_pos (g + 1)) (N_Val_mono (Nat.le_succ g)))
+  N_L_mono := fun g => N_Val_mono (Nat.le_succ g)
+
+/-- Growth gap for binaryGradeStructure at any overhead. -/
+theorem binary_has_growth_gap (c : Nat) :
+    HasGrowthGap binaryGradeStructure.N_End binaryGradeStructure.N_L c :=
+  meso_has_growth_gap c
+
 -- ════════════════════════════════════════════════════════════
 -- Helper arithmetic lemmas (ported from PNP.CoreArithmetic)
 -- ════════════════════════════════════════════════════════════

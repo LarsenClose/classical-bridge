@@ -1,9 +1,13 @@
-[![Lean Action CI](https://github.com/LarsenClose/classical-bridge/actions/workflows/ci.yml/badge.svg)](https://github.com/LarsenClose/classical-bridge/actions/workflows/ci.yml)
-[![Documentation](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://larsenclose.github.io/classical-bridge/)
-
 # classical-bridge
 
-Constructs a concrete graded reflexive model from classical Turing machine computation and classifies its regime. Contains the headline results: `classicalGRM` (carrier = binary strings, selfApp = strip-and-reattach the Kleene self-application header, grade = string length), the counting engine (`construction_super_poly`, `drifted_lock`), P and NP as complexity classes over binary strings, and `not_P_eq_NP`. 23 Lean files, zero sorry.
+Constructs a concrete graded reflexive model from classical Turing machine computation and classifies its regime. Carrier = `BinString`, fold = `List.drop headerLen`, unfold = `header ++ ·`, grade = `List.length`. `SelfAppHeader` is a free parameter, not an axiom. 28 source files, zero sorry, zero custom axioms in the main theorem chain.
+
+## Primary results
+
+- `naming_cost_nonclosure` -- for any naming convention with positive cost, no GRMorphism maps from the transport tower back to classicalGRM.
+- `fold_unfold_nonclosure` -- the fold/unfold asymmetry of classical naming blocks structural sections at the weakest level (FoldUnfoldSection, no grade condition). Strengthens naming_cost_nonclosure by weakening the hypothesis.
+- `classical_answer_space` -- inhabits the complete answer space: regime profile, resource-indexed growth gap, no polynomial cover, and naming cost nonclosure.
+- `classical_computation_characterized` -- the three cannots as a single conjunction: irreducible naming cost, structurally unreachable substrate, no polynomial cover.
 
 ## Build
 
@@ -25,24 +29,21 @@ classical-constraints  (seven chains, lock theorems, direct bridges)
 classical-bridge   <-- you are here
 ```
 
-This repo mirrors `GradedReflModel` and related types from witness-transport in the `Mirror/` directory. The repos cannot share imports; mirroring is for build isolation.
+## Axiom profile
 
-## Custom axioms
+**Custom axioms in main theorem chain:** 0
 
-Six custom axioms, of which two are classical mathematics, one is orphaned, and three encode the standard computational interface:
+**Lean foundational axioms:** `propext`, `Quot.sound`, `Classical.choice` (standard Lean 4 / Mathlib foundations).
 
-- `classical_tm_exists` (Turing 1936): deterministic Turing machines exist.
-- `classical_selfapp_header_exists` (Kleene 1938): a fixed self-application header exists via the recursion theorem.
-- `polytime_output_bound`: basic TM property (t steps write at most t symbols). **Orphaned** -- not reachable from any main result. Retained for completeness.
-- `tm_pair_proj_exists`: TM pairs project. Used by `P_always_sub_NP`.
-- `verifier_model_polyMarkov`: P=NP implies polynomial-time finders exist. Definitional -- encodes what P=NP means computationally.
-- `bridge_injection`: polynomial-time finders respect counting bounds. Definitional -- encodes what bounded computation does.
+`classical_tm` wraps Mathlib's `Nat.Partrec.Code.evaln` with BinString encoding/decoding -- no custom TM axiom. `SelfAppHeader` is a parameter, not an axiom. All former custom axioms (`classical_tm_exists`, `classical_selfapp_header_exists`, `tm_pair_proj_exists`, `bridge_injection`, `verifier_model_polyMarkov`) are proved, parameterized, or removed. One orphaned axiom (`polytime_output_bound`) remains, not reachable from any main result.
 
-Three former axioms are now proved theorems: `growth_gap_survives_poly`, `sideA_bounded_selector_impossible`, `classicalGRM_table_representable`.
+## Cross-repo dependencies
 
-## Cross-repo notes
-
-The `sideA` theorem is proved here independently in `Mirror/SideA.lean` (4 lines from `SelfAppUnbounded.overflows`). The same result is proved in pnp-integrated and mirrored as an axiom in classical-constraints.
+| Repository | What is imported | Used by |
+|---|---|---|
+| witness-transport | `MinimalNecessityGradient`, `transportGradedReflModel`, `GRMorphism` | SemanticBridge.lean, ModelCorrespondence.lean |
+| pnp-integrated | `ResourceSemantics` (`ResourceModel`, `binary_growth_gap`, `binary_no_uniform_bound`) | SemanticBridge.lean |
+| classical-constraints | Chain lock infrastructure | CrossRepoComposition.lean (documentation only) |
 
 ## Theorem inventory
 

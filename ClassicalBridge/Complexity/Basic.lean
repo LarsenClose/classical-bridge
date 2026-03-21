@@ -18,22 +18,17 @@ and the PolyBound machinery from Mirror/CountingFunctions.lean.
 - `P_always_sub_NP` — P ⊆ NP
 - `P_eq_NP` — the proposition P = NP
 
-## Connection to PolyMarkovProp (task #8)
-
-PolyMarkovProp uses CompModel where inputs and outputs are Nat.
-The BinString-level P/NP here connects to CompModel via NatNP and
-PEqNP_nat, which task #8 can use to instantiate PolyMarkovProp.
-
 ## Axiom profile
 
-- tm_pair_proj_exists: axiom (classical TM composition, Turing 1936)
-All other results are proved from definitions.
+Zero custom axioms. tm_pair_proj_exists is proved in PairProjection.lean.
+All results are proved from definitions.
 
 STATUS: 0 sorry.
 -/
 
 import ClassicalBridge.TuringMachine.Basic
 import ClassicalBridge.Mirror.CountingFunctions
+import ClassicalBridge.Complexity.PairProjection
 
 namespace ClassicalBridge.Complexity
 
@@ -137,18 +132,21 @@ for the projection, which is absorbed into the polynomial time bound.
 We axiomatize this rather than constructing the TM from scratch.
 -/
 
-/-- AXIOM: TM pair projection. Given a TM M and program p that computes
+/-- TM pair projection. Given a TM M and program p that computes
     on inputs x, there exists a TM M' and program p' that runs M on
     the first component of a paired input, with bounded overhead c.
 
-    CLASSICAL JUSTIFICATION: Standard TM modification result. A TM can
-    project out fst(pair(x,w)) = x and simulate M on it. The overhead c
-    depends only on M and p, not on x or w. (Turing 1936, Rogers 1967) -/
-axiom tm_pair_proj_exists (M : StepBoundedTM) (p : BinString) :
+    PROVED: Constructs M' that extracts fst(pair(x,w)) = x via
+    unary-prefix decoding and runs M on it. Overhead c = 1.
+    See Complexity/PairProjection.lean.
+
+    Axiom profile: propext, Classical.choice, Quot.sound. -/
+theorem tm_pair_proj_exists (M : StepBoundedTM) (p : BinString) :
     ∃ (M' : StepBoundedTM) (p' : BinString) (c : Nat),
       ∀ (x w : BinString) (v : BinString) (t : Nat),
         M.run p x t = some v →
-        M'.run p' (pair x w) (t + c) = some v
+        M'.run p' (pair x w) (t + c) = some v :=
+  PairProjection.tm_pair_proj_exists_proved M p
 
 /-- P ⊆ NP.
 
